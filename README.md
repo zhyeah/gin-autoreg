@@ -24,6 +24,18 @@ You can boot gin-autoreg by follow codes, while only ```Engine``` is required.
 
 ### Explanation
 Firstly, you need to get the instance of AutoRouter by ```GetAutoRouter```, then invoke ```RegisterRoute``` to kick off the procedure.
+* BaseUrl: the common url added before each of your api.
+* Engine: gin engine object.
+* OAAuth: give a func like ```func CheckAuth(ctx *gin.Context)```
+* ResponseHandler: the respone given by this package default is like:
+  ```json
+  {
+    "retCode": 200,
+    "errMsg": "",
+    "body": {}
+  }
+  ```
+  You can give your owner format by using ```gin.Context```
 
 ## Demo Controller
 ```go
@@ -61,4 +73,4 @@ The param of ```httprequest``` are as follows:
 * url: the url path of this action.
 * method: the 'method' of this http request, it can be: GET, POST, PUT, DELETE.
 * func: the function of this controller which will handle this request.
-* auth: give a func like ```func CheckAuth(ctx *gin.Context)```, it will handle before the ```func``` executed.
+* auth: when true it will execute the ```OAAuth``` method you given in 'Boot' before the ```func``` executed.
