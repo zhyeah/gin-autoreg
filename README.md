@@ -2,14 +2,14 @@
 register and fill params route by tag automaticlly
 
 ## Boot
-You can boot gin-autoreg by follow codes, while only ```Engine``` is necessary.
+You can boot gin-autoreg by follow codes, while only ```Engine``` is required.
 ```go
-autoRouter := autoroute.GetAutoRouter()
+        autoRouter := autoroute.GetAutoRouter()
 	autoRouter.RegisterRoute(&autoroute.AutoRouteConfig{
 		BaseUrl: "/beaconApi", // base url before each 'url' you defined in controller tag.
 		Engine:  g, // assign gin engine object
 		ResponseHandler: func(ctx *gin.Context, exp *exception.HTTPException, data interface{}) {
-      // define your response format.
+                        // define your response format.
 			if exp == nil {
 				controller.SendResponse(ctx, nil, data)
 			} else if exp.Code == http.StatusInternalServerError {
@@ -21,6 +21,9 @@ autoRouter := autoroute.GetAutoRouter()
 		OAAuth: midwares.SmartProxyAuth(), // your pre handler
 	})
 ```
+
+### Explanation
+Firstly, you need to get the instance of AutoRouter by ```GetAutoRouter```, then invoke ```RegisterRoute``` to kick off the procedure.
 
 ## Demo Controller
 ```go
