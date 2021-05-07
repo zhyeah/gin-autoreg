@@ -146,7 +146,6 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 		var err interface{} = nil
 		args, err := param.ResolveParams(ctrl, function, ctx)
 		if err != nil {
-			// bizController.SendResponse(ctx, errno.New(errno.InvalidParams, err.(error)), nil)
 			router.AutoRouteConfig.ResponseHandler(ctx, &exception.HTTPException{
 				Code:    http.StatusBadRequest,
 				Message: err.(error).Error(),
@@ -157,7 +156,9 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 
 		rets := util.ReflectInvokeMethod(ctrl, function, args...)
 		var data interface{} = nil
-		if len(rets) == 1 {
+		if len(rets) == 0 {
+			return
+		} else if len(rets) == 1 {
 			data = nil
 			err = rets[0]
 		} else {
@@ -167,12 +168,12 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 
 		if err == nil {
 			router.AutoRouteConfig.ResponseHandler(ctx, nil, data)
-		} else if reflect.TypeOf(err).Name() == "HTTPException" {
-			httpException := err.(exception.HTTPException)
+		} else if reflect.TypeOf(err).Elem().Name() == "HTTPException" {
+			httpException := err.(*exception.HTTPException)
 			router.AutoRouteConfig.ResponseHandler(ctx, &exception.HTTPException{
 				Code:    httpException.Code,
 				Message: httpException.Message,
-				Err:     &httpException,
+				Err:     httpException,
 			}, nil)
 		} else {
 			err := err.(error)
