@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 
@@ -12,25 +13,26 @@ import (
 	"github.com/zhyeah/gin-autoreg/controller"
 	"github.com/zhyeah/gin-autoreg/exception"
 	"github.com/zhyeah/gin-autoreg/param"
+	"github.com/zhyeah/gin-autoreg/tag"
 	"github.com/zhyeah/gin-autoreg/util"
 	"github.com/zhyeah/gin-autoreg/vo"
 )
 
 const (
-	GET    = "GET"
-	POST   = "POST"
-	PUT    = "PUT"
-	DELETE = "DELETE"
+	Get    = "GET"
+	Post   = "POST"
+	Put    = "PUT"
+	Delete = "DELETE"
 )
 
 const (
-	TAG_FIELD_URL    = "url"
-	TAG_FIELD_METHOD = "method"
-	TAG_FIELD_FUNC   = "func"
-	TAG_FIELD_AUTH   = "auth"
+	TagFieldUrl    = "url"
+	TagFieldMethod = "method"
+	TagFieldFunc   = "func"
+	TagFieldAuth   = "auth"
 )
 
-// AutoRouteConfig 自动注入路由配置
+// AutoRouteConfig regitster route automatically
 type AutoRouteConfig struct {
 	Engine          *gin.Engine
 	BaseUrl         string
@@ -42,6 +44,7 @@ var autoRouter *AutoRouter
 
 type AutoRouter struct {
 	AutoRouteConfig *AutoRouteConfig
+	TagManager      *tag.Manager
 }
 
 // RegisterRoute 注册路由
@@ -89,9 +92,11 @@ func (router *AutoRouter) registerEachController(engine *gin.RouterGroup) error 
 			if strings.Index(typ.Field(i).Name, "route") != 0 {
 				continue
 			}
-			httpRequestTag := typ.Field(i).Tag.Get("httprequest")
-			err := router.registerController(engine, v, httpRequestTag)
+
+			field := typ.Field(i)
+			err := router.registerController(engine, v, &field)
 			if err != nil {
+				httpRequestTag := typ.Field(i).Tag.Get("httprequest")
 				return fmt.Errorf(k + " register api " + httpRequestTag + " failed, err: " + err.Error())
 			}
 		}
@@ -100,37 +105,41 @@ func (router *AutoRouter) registerEachController(engine *gin.RouterGroup) error 
 	return nil
 }
 
-func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl interface{}, tag string) error {
-	vals := strings.Split(tag, ";")
+func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl interface{}, field *reflect.StructField) error {
+	vals := strings.Split(field.Tag.Get("httprequest"), ";")
 	if len(vals) < 3 {
 		return errors.New("the arguments should contains at least 3 parameters: url, method, func")
 	}
 
 	tagMap := convertTagArrayToMap(vals)
-	url, ok := tagMap[TAG_FIELD_URL]
+	url, ok := tagMap[TagFieldUrl]
 	if !ok {
 		return errors.New("the tag field should contains 'url'")
 	}
-	method, ok := tagMap[TAG_FIELD_METHOD]
+	method, ok := tagMap[TagFieldMethod]
 	if !ok {
 		return errors.New("the tag field should contains 'method'")
 	}
-	function, ok := tagMap[TAG_FIELD_FUNC]
+	function, ok := tagMap[TagFieldFunc]
 	if !ok {
 		return errors.New("the tag field should contains 'func'")
 	}
-	needAuth, ok := tagMap[TAG_FIELD_AUTH]
+	needAuth, ok := tagMap[TagFieldAuth]
 	if !ok {
 		needAuth = "true"
 	}
 
 	args := []interface{}{url}
 
-	// 对于需要检查权限的接口
+	// auth check
 	if needAuth == "true" && router.AutoRouteConfig.OAAuth != nil {
 		args = append(args, router.AutoRouteConfig.OAAuth)
 	}
 
+	// Pre-Handlers
+	router.RegisterTagHandlers(field, &args, router.TagManager.GetPreHandlers())
+
+	// http handler
 	args = append(args, func(ctx *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
@@ -185,8 +194,43 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 		}
 	})
 
+	// Post-Handlers
+	router.RegisterTagHandlers(field, &args, router.TagManager.GetPostHandlers())
+
 	util.ReflectInvokeMethod(engine, method, args...)
 	return nil
+}
+
+// RegisterTagHandlers register tag handlers
+func (router *AutoRouter) RegisterTagHandlers(field *reflect.StructField, args *[]interface{}, handlers map[string]tag.Handler) {
+	if len(handlers) == 0 {
+		return
+	}
+
+	handlersArray := make([]tag.Handler, 0)
+	for k, v := range handlers {
+		tag := (*field).Tag.Get(k)
+		if tag == "" {
+			continue
+		}
+
+		handlersArray = append(handlersArray, v)
+	}
+
+	// sort by 'GetOrder()'
+	sort.SliceStable(handlersArray, func(i, j int) bool {
+		return handlersArray[i].GetOrder() < handlersArray[j].GetOrder()
+	})
+
+	// add handlers to 'args'
+	for i := range handlersArray {
+		*args = append(*args, func(ctx *gin.Context) {
+			result := handlersArray[i].Handle(ctx)
+			if result.Code == tag.FailedAndStop {
+				ctx.Abort()
+			}
+		})
+	}
 }
 
 func convertTagArrayToMap(tags []string) map[string]string {
@@ -209,7 +253,9 @@ func GetAutoRouter() *AutoRouter {
 	if autoRouter == nil {
 		var one sync.Once
 		one.Do(func() {
-			autoRouter = &AutoRouter{}
+			autoRouter = &AutoRouter{
+				TagManager: tag.GetManager(),
+			}
 		})
 	}
 	return autoRouter
