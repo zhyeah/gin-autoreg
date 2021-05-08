@@ -17,5 +17,5 @@ type HandleResult struct {
 // Handler 自定义标签处理器接口
 type Handler interface {
 	GetOrder() int
-	Handle(ctx *gin.Context) *HandleResult
+	Handle(tagValue string, ctx *gin.Context) *HandleResult
 }

@@ -208,6 +208,7 @@ func (router *AutoRouter) RegisterTagHandlers(field *reflect.StructField, args *
 	}
 
 	handlersArray := make([]tag.Handler, 0)
+	orderMap := make(map[int]string)
 	for k, v := range handlers {
 		tag := (*field).Tag.Get(k)
 		if tag == "" {
@@ -215,6 +216,7 @@ func (router *AutoRouter) RegisterTagHandlers(field *reflect.StructField, args *
 		}
 
 		handlersArray = append(handlersArray, v)
+		orderMap[v.GetOrder()-1] = tag
 	}
 
 	// sort by 'GetOrder()'
@@ -225,7 +227,8 @@ func (router *AutoRouter) RegisterTagHandlers(field *reflect.StructField, args *
 	// add handlers to 'args'
 	for i := range handlersArray {
 		*args = append(*args, func(ctx *gin.Context) {
-			result := handlersArray[i].Handle(ctx)
+			tagValue, _ := orderMap[i]
+			result := handlersArray[i].Handle(tagValue, ctx)
 			if result.Code == tag.FailedAndStop {
 				ctx.Abort()
 			}
