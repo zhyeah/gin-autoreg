@@ -66,7 +66,32 @@ func init() {
 }
 ```
 
+The ```vo.TestGetRequest``` defined as:
+```go
+type TestGetRequest struct {
+	Name  string `from:"query" field:"name"`
+	Class string `from:"query" default:"6-01"`
+	Age   int    `from:"query"`
+	Hobby string `from:"hobby" must:"false"`
+}
+```
+
+And ```vo.TestPostRequest``` is as follow:
+```go
+type TestPostRequest struct {
+	Data TestPostBody `from:"body"`
+}
+
+type TestPostBody struct {
+	Name  string `json:"name"`
+	Class string `json:"class"`
+	Age   int    `json:"age"`
+	Hobby string `json:"hobby"`
+}
+```
+
 ### Explaination
+#### Route
 As you see, we register route by adding tag for the member of controller, these members should start with 'route'. Then add ```httprequest``` tag after them. The route will be register to gin automatically.
 
 The param of ```httprequest``` are as follows:
@@ -74,3 +99,22 @@ The param of ```httprequest``` are as follows:
 * method: the 'method' of this http request, it can be: GET, POST, PUT, DELETE.
 * func: the function of this controller which will handle this request.
 * auth: when true it will execute the ```OAAuth``` method you given in 'Boot' before the ```func``` executed.
+
+#### Parameter
+
+
+### Test
+#### Get Method
+Now let's try to query the url 'http://{host}:{port}/api/test/get?name=abc&age=18', and we get
+```json
+{
+    "retCode": 0,
+    "errMsg": "",
+    "body": {
+        "name": "abc",
+        "class": "6-01",
+        "age": 18,
+        "hobby": ""
+    }
+}
+```
