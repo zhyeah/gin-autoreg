@@ -101,6 +101,8 @@ The param of ```httprequest``` are as follows:
 * func: the function of this controller which will handle this request.
 * auth: when true it will execute the ```OAAuth``` method you given in 'Boot' before the ```func``` executed.
 
+Note: ```controller.ControllerMap["TestController"] = &TestController{}``` is the command that add your controller into register list, don't forget it!
+
 #### 2.1.2 Parameter
 You can use ```*gin.Context``` as the argument for your controller, and you can also define your own struct instead. The tag applied for this are:
 
@@ -133,4 +135,9 @@ Now let's try to query the url 'http://{host}:{port}/api/test/get?name=abc&age=1
 
 And if we drop ```age``` argument, we get
 ```json
+{
+    "retCode": 400,
+    "errMsg": "field 'age' val '' cannot convert to int",
+    "body": null
+}
 ```
