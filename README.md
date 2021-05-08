@@ -57,7 +57,6 @@ func (controller *TestController) TestGet(request *vo.TestGetRequest) (*vo.TestG
 
 // TestPost test post request
 func (controller *TestController) TestPost(request *vo.TestPostRequest) error {
-	fmt.Println(*request)
 	return nil
 }
 

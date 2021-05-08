@@ -34,7 +34,6 @@ func ResolveParams(ctrl interface{}, methodName string, ctx *gin.Context) ([]int
 
 	// 获取ctrl的methodName的方法
 	method := reflect.ValueOf(ctrl).MethodByName(methodName)
-	fmt.Println(method)
 
 	// 遍历method的参数，如果是*struct类型，对字段进行解析，如果是*gin.Context类型，直接塞入，其他类型则抛异常
 	methodType := method.Type()
@@ -85,27 +84,27 @@ func SetFieldValue(fieldInfo *FieldInfo, ctx *gin.Context) error {
 		valStr := getValueFromContext(fieldInfo, ctx)
 		intVal, err := util.ConvertStringToInt64(valStr)
 		if err != nil && fieldInfo.MustHave {
-			return err
+			return fmt.Errorf("field '%s' val '%s' cannot convert to int", fieldInfo.Name, valStr)
 		}
 		fieldInfo.Field.SetInt(intVal)
 	case reflect.Uint.String(), reflect.Uint8.String(), reflect.Uint16.String(), reflect.Uint32.String(), reflect.Uint64.String():
 		valStr := getValueFromContext(fieldInfo, ctx)
 		intVal, err := util.ConvertStringToUInt64(valStr)
 		if err != nil && fieldInfo.MustHave {
-			return err
+			return fmt.Errorf("field '%s' val '%s' cannot convert to unsigned int", fieldInfo.Name, valStr)
 		}
 		fieldInfo.Field.SetUint(intVal)
 	case reflect.Bool.String():
 		valStr := getValueFromContext(fieldInfo, ctx)
 		boolVal, err := util.ConvertStringToBool(valStr)
 		if err != nil && fieldInfo.MustHave {
-			return err
+			return fmt.Errorf("field '%s' val '%s' cannot convert to bool", fieldInfo.Name, valStr)
 		}
 		fieldInfo.Field.SetBool(boolVal)
 	case reflect.String.String():
 		valStr := getValueFromContext(fieldInfo, ctx)
 		if valStr == "" && fieldInfo.MustHave {
-			return fmt.Errorf("field '%s' must have val, but now its empty", fieldInfo.FieldName)
+			return fmt.Errorf("field '%s' must have val, but now it's empty", fieldInfo.Name)
 		}
 		fieldInfo.Field.SetString(valStr)
 	case reflect.Slice.String(), reflect.Map.String(), reflect.Struct.String():
