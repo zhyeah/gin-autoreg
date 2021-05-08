@@ -141,3 +141,7 @@ And if we drop ```age``` argument, we get
     "body": null
 }
 ```
+As you see, ```class``` was assigned by default value, and ```hobby``` is not required, but age must exist!
+
+#### 2.2.2 Post Method
+
