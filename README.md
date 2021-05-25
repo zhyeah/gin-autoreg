@@ -1,7 +1,7 @@
 # gin-autoreg
 register and fill params route by tag automaticlly
 
-## Boot
+## 1. Boot
 You can boot gin-autoreg by follow codes, while only ```Engine``` is required.
 ```go
         autoRouter := autoroute.GetAutoRouter()
@@ -37,7 +37,8 @@ Firstly, you need to get the instance of AutoRouter by ```GetAutoRouter```, then
   ```
   You can give your owner format by using ```gin.Context```
 
-## Demo Controller
+
+## 2. Demo Controller
 ```go
 // TestController test controller
 type TestController struct {
@@ -57,6 +58,7 @@ func (controller *TestController) TestGet(request *vo.TestGetRequest) (*vo.TestG
 
 // TestPost test post request
 func (controller *TestController) TestPost(request *vo.TestPostRequest) error {
+	fmt.Println(*request)
 	return nil
 }
 
@@ -89,8 +91,8 @@ type TestPostBody struct {
 }
 ```
 
-### Explaination
-#### Route
+### 2.1 Explaination
+#### 2.1.1 Route
 As you see, we register route by adding tag for the member of controller, these members should start with 'route'. Then add ```httprequest``` tag after them. The route will be register to gin automatically.
 
 The param of ```httprequest``` are as follows:
@@ -99,11 +101,24 @@ The param of ```httprequest``` are as follows:
 * func: the function of this controller which will handle this request.
 * auth: when true it will execute the ```OAAuth``` method you given in 'Boot' before the ```func``` executed.
 
-#### Parameter
+Note: ```controller.ControllerMap["TestController"] = &TestController{}``` is the command that add your controller into register list, don't forget it!
+
+#### 2.1.2 Parameter
+You can use ```*gin.Context``` as the argument for your controller, and you can also define your own struct instead. The tag applied for this are:
+
+* field: the field name that this value stored in.
+* from: 
+  * query: the field value comes from url parameter.
+  * path: the field value comes from url path.
+  * form: the field value comes from the post form data.
+  * body: the field value comes from raw body data.
+  * context: the field value comes from ```gin.Context```.
+* default: if this field is not required, you can give it a default value.
+* must: if this field is required, assign ```true``` to it, otherwise ```false```
 
 
-### Test
-#### Get Method
+### 2.2 Test
+#### 2.2.1 Get Method
 Now let's try to query the url 'http://{host}:{port}/api/test/get?name=abc&age=18', and we get
 ```json
 {
@@ -117,3 +132,16 @@ Now let's try to query the url 'http://{host}:{port}/api/test/get?name=abc&age=1
     }
 }
 ```
+
+And if we drop ```age``` argument, we get
+```json
+{
+    "retCode": 400,
+    "errMsg": "field 'age' val '' cannot convert to int",
+    "body": null
+}
+```
+As you see, ```class``` was assigned by default value, and ```hobby``` is not required, but age must exist!
+
+#### 2.2.2 Post Method
+
