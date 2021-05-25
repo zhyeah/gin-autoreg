@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/zhyeah/gin-autoreg/controller"
 	"github.com/zhyeah/gin-autoreg/exception"
+	"github.com/zhyeah/gin-autoreg/intercepter"
 	"github.com/zhyeah/gin-autoreg/param"
 	"github.com/zhyeah/gin-autoreg/tag"
 	"github.com/zhyeah/gin-autoreg/util"
@@ -136,6 +137,13 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 		args = append(args, router.AutoRouteConfig.OAAuth)
 	}
 
+	// Pre-Intercepters
+	intercepterManager := intercepter.GetIntercepterManager()
+	preInters := intercepterManager.GetPreIntercepters()
+	for i := range preInters {
+		args = append(args, preInters[i])
+	}
+
 	// Pre-Handlers
 	router.RegisterTagHandlers(field, &args, router.TagManager.GetPreHandlers())
 
@@ -196,6 +204,12 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 
 	// Post-Handlers
 	router.RegisterTagHandlers(field, &args, router.TagManager.GetPostHandlers())
+
+	// Post-inters
+	postInters := intercepterManager.GetPreIntercepters()
+	for i := range postInters {
+		args = append(args, postInters[i])
+	}
 
 	util.ReflectInvokeMethod(engine, method, args...)
 	return nil
