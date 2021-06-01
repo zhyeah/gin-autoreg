@@ -38,7 +38,7 @@ type AutoRouteConfig struct {
 	Engine          *gin.Engine
 	BaseUrl         string
 	ResponseHandler func(ctx *gin.Context, exp *exception.HTTPException, data interface{})
-	OAAuth          func(ctx *gin.Context)
+	OAAuth          func(ctx *gin.Context, forceCheck bool)
 }
 
 var autoRouter *AutoRouter
@@ -133,8 +133,11 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 	args := []interface{}{url}
 
 	// auth check
-	if needAuth == "true" && router.AutoRouteConfig.OAAuth != nil {
-		args = append(args, router.AutoRouteConfig.OAAuth)
+	if router.AutoRouteConfig.OAAuth != nil {
+		forceCheck := util.ConvertStringToBoolDefault(needAuth, true)
+		args = append(args, func(ctx *gin.Context) {
+			router.AutoRouteConfig.OAAuth(ctx, forceCheck)
+		})
 	}
 
 	// Pre-Intercepters
