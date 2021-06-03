@@ -165,6 +165,7 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 
 		var err interface{} = nil
 		args, err := param.ResolveParams(ctrl, function, ctx)
+		ctx.Set("args", args)
 		if err != nil {
 			router.AutoRouteConfig.ResponseHandler(ctx, &exception.HTTPException{
 				Code:    http.StatusBadRequest,
