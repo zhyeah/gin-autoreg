@@ -2,7 +2,6 @@ package util
 
 import (
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"strings"
 )
@@ -38,7 +37,7 @@ func convert(fieldObj interface{}, obj interface{}) (interface{}, error) {
 		objType = objType.Elem()
 	}
 	fieldType := reflect.TypeOf(fieldObj)
-	if objType.Kind() == fieldType.Kind() {
+	if objType.Kind() == fieldType.Kind() && fieldType.Kind() != reflect.Slice {
 		// the type is same, there is no need to do convertion.
 		return fieldObj, nil
 	}
@@ -59,6 +58,22 @@ func convert(fieldObj interface{}, obj interface{}) (interface{}, error) {
 		} else if objType.Kind() == reflect.Float32 || objType.Kind() == reflect.Float64 {
 			return ConvertStringToFloat64(fieldObj.(string))
 		}
+	case reflect.Slice:
+		if objType.Kind() != reflect.Slice {
+			return fieldType, nil
+		}
+		realSlice := make([]interface{}, 0)
+		length := fieldValue.Len()
+		for i := 0; i < length; i++ {
+			curType := objType.Elem()
+			curObj := reflect.New(curType).Elem().Interface()
+			convertedResult, err := convert(fieldValue.Index(i).Interface(), curObj)
+			if err != nil {
+				return fieldObj, err
+			}
+			realSlice = append(realSlice, convertedResult)
+		}
+		return realSlice, nil
 	case reflect.Map:
 		// get field json name map
 		fieldJSONMap := getFieldJSONMap(obj)
@@ -74,7 +89,6 @@ func convert(fieldObj interface{}, obj interface{}) (interface{}, error) {
 				}
 				realMap[fieldJSONName] = convertResult
 			} else {
-				fmt.Println(fieldJSONName, " ", rg.Value().Interface())
 				realMap[fieldJSONName] = rg.Value().Interface()
 			}
 		}
