@@ -132,6 +132,11 @@ func ConvertUint64ToString(n uint64) string {
 	return strconv.FormatUint(n, 10)
 }
 
+// ConvertFloat64ToString 将float64转换成字符串
+func ConvertFloat64ToString(f float64) string {
+	return strconv.FormatFloat(f, 'f', -1, 64)
+}
+
 // FirstToLower 转换首字母为小写字母
 func FirstToLower(input string) string {
 	return strings.ToLower(input[0:1]) + input[1:]

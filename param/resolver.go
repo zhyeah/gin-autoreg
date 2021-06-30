@@ -3,6 +3,7 @@ package param
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"reflect"
 
 	"github.com/gin-gonic/gin"
@@ -109,14 +110,27 @@ func SetFieldValue(fieldInfo *FieldInfo, ctx *gin.Context) error {
 		fieldInfo.Field.SetString(valStr)
 	case reflect.Slice.String(), reflect.Map.String(), reflect.Struct.String():
 		val := fieldInfo.Field.Addr().Interface()
-		if err := ctx.BindJSON(val); err != nil {
+		// if err := ctx.BindJSON(val); err != nil {
+		// 	return err
+		// }
+		defer ctx.Request.Body.Close()
+		body, _ := ioutil.ReadAll(ctx.Request.Body)
+		err := util.AdaptJSONForDTO(string(body), val)
+		if err != nil {
 			return err
 		}
 		fieldInfo.Field.Set(reflect.ValueOf(val).Elem())
 	case reflect.Ptr.String():
 		if fieldInfo.Type.Elem().Kind().String() == reflect.Struct.String() {
 			val := reflect.New(fieldInfo.Type.Elem()).Interface()
-			if err := ctx.BindJSON(val); err != nil {
+			// if err := ctx.BindJSON(val); err != nil {
+			// 	return err
+			// }
+			// 这里手动强制适配
+			defer ctx.Request.Body.Close()
+			body, _ := ioutil.ReadAll(ctx.Request.Body)
+			err := util.AdaptJSONForDTO(string(body), val)
+			if err != nil {
 				return err
 			}
 			fieldInfo.Field.Set(reflect.ValueOf(val))
