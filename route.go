@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -154,6 +155,7 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 	args = append(args, func(ctx *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
+				fmt.Println(string(debug.Stack())) // just for debug
 				router.AutoRouteConfig.ResponseHandler(ctx, &exception.HTTPException{
 					Code:    http.StatusInternalServerError,
 					Message: fmt.Sprintf("error: %v", err),
