@@ -32,6 +32,9 @@ func AdaptJSONForDTO(jsonStr string, objPtr interface{}) error {
 }
 
 func convert(fieldObj interface{}, obj interface{}) (interface{}, error) {
+	if obj == nil {
+		return fieldObj, nil
+	}
 	objType := reflect.TypeOf(obj)
 	if objType.Kind() == reflect.Ptr {
 		objType = objType.Elem()
