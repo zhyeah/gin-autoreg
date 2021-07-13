@@ -8,15 +8,27 @@ import (
 
 // AdaptJSONForDTO 将json转换为dto适配的格式, 并反序列化
 func AdaptJSONForDTO(jsonStr string, objPtr interface{}) error {
-	// 首先将jsonStr转换为map
-	adaptMap := make(map[string]interface{})
-	err := json.Unmarshal([]byte(jsonStr), &adaptMap)
+	var adaptObj interface{}
+
+	objType := reflect.TypeOf(objPtr)
+	if objType.Kind() == reflect.Ptr {
+		objType = objType.Elem()
+	}
+	if objType.Kind() == reflect.Struct || objType.Kind() == reflect.Map {
+		// 首先将jsonStr转换为map
+		adaptObj = make(map[string]interface{})
+	} else if objType.Kind() == reflect.Slice {
+		adaptObj = make([]map[string]interface{}, 0)
+	} else {
+		return nil
+	}
+	err := json.Unmarshal([]byte(jsonStr), &adaptObj)
 	if err != nil {
 		return err
 	}
 
 	// 递归的比较对象json字段信息和map的差异, 将字符和数字类型进行转换
-	convertedResult, err := convert(adaptMap, objPtr)
+	convertedResult, err := convert(adaptObj, objPtr)
 	if err != nil {
 		json.Unmarshal([]byte(jsonStr), objPtr)
 	} else {

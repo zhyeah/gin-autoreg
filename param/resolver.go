@@ -110,9 +110,6 @@ func SetFieldValue(fieldInfo *FieldInfo, ctx *gin.Context) error {
 		fieldInfo.Field.SetString(valStr)
 	case reflect.Slice.String(), reflect.Map.String(), reflect.Struct.String():
 		val := fieldInfo.Field.Addr().Interface()
-		// if err := ctx.BindJSON(val); err != nil {
-		// 	return err
-		// }
 		defer ctx.Request.Body.Close()
 		body, _ := ioutil.ReadAll(ctx.Request.Body)
 		err := util.AdaptJSONForDTO(string(body), val)
@@ -123,10 +120,28 @@ func SetFieldValue(fieldInfo *FieldInfo, ctx *gin.Context) error {
 	case reflect.Ptr.String():
 		if fieldInfo.Type.Elem().Kind().String() == reflect.Struct.String() {
 			val := reflect.New(fieldInfo.Type.Elem()).Interface()
-			// if err := ctx.BindJSON(val); err != nil {
-			// 	return err
-			// }
 			// 这里手动强制适配
+			defer ctx.Request.Body.Close()
+			body, _ := ioutil.ReadAll(ctx.Request.Body)
+			err := util.AdaptJSONForDTO(string(body), val)
+			if err != nil {
+				return err
+			}
+			fieldInfo.Field.Set(reflect.ValueOf(val))
+		} else if fieldInfo.Type.Elem().Kind().String() == reflect.Map.String() {
+			keyType := fieldInfo.Type.Elem().Key()
+			valType := fieldInfo.Type.Elem().Elem()
+			val := reflect.New(reflect.MapOf(keyType, valType)).Interface()
+			defer ctx.Request.Body.Close()
+			body, _ := ioutil.ReadAll(ctx.Request.Body)
+			err := util.AdaptJSONForDTO(string(body), val)
+			if err != nil {
+				return err
+			}
+			fieldInfo.Field.Set(reflect.ValueOf(val))
+		} else if fieldInfo.Type.Elem().Kind().String() == reflect.Slice.String() {
+			listType := fieldInfo.Type.Elem().Elem()
+			val := reflect.New(reflect.SliceOf(listType)).Interface()
 			defer ctx.Request.Body.Close()
 			body, _ := ioutil.ReadAll(ctx.Request.Body)
 			err := util.AdaptJSONForDTO(string(body), val)
