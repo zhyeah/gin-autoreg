@@ -326,7 +326,7 @@ func convertTag(ctrl interface{}, tags []string) (*data.HTTPRequest, error) {
 	if !ok {
 		author = ""
 	}
-	dataStr, err := param.ResolvePostDataJson(ctrl, method)
+	dataStr, err := param.ResolvePostDataJson(ctrl, function)
 	if err != nil {
 		return nil, err
 	}
