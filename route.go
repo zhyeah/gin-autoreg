@@ -128,7 +128,7 @@ func (router *AutoRouter) onStart() {
 
 // onStart boot action
 func (router *AutoRouter) onFinished() {
-	if router.OnStartActions != nil {
+	if router.OnFinishedActions != nil {
 		for i := range router.OnFinishedActions {
 			router.OnFinishedActions[i](router.Context)
 		}
