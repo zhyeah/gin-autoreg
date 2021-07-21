@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/zhyeah/gin-autoreg/controller"
+	"github.com/zhyeah/gin-autoreg/data"
 	"github.com/zhyeah/gin-autoreg/exception"
 	"github.com/zhyeah/gin-autoreg/intercepter"
 	"github.com/zhyeah/gin-autoreg/param"
@@ -32,6 +33,7 @@ const (
 	TagFieldMethod = "method"
 	TagFieldFunc   = "func"
 	TagFieldAuth   = "auth"
+	TagFieldAuthor = "author"
 )
 
 // AutoRouteConfig regitster route automatically
@@ -45,8 +47,27 @@ type AutoRouteConfig struct {
 var autoRouter *AutoRouter
 
 type AutoRouter struct {
-	AutoRouteConfig *AutoRouteConfig
-	TagManager      *tag.Manager
+	AutoRouteConfig   *AutoRouteConfig
+	TagManager        *tag.Manager
+	OnStartActions    []func(*data.RouterContext)
+	Context           *data.RouterContext
+	OnFinishedActions []func(*data.RouterContext)
+}
+
+// AddStartAction 添加启动action
+func (router *AutoRouter) AddStartAction(startAction func(*data.RouterContext)) {
+	if router.OnStartActions == nil {
+		router.OnStartActions = make([]func(*data.RouterContext), 0)
+	}
+	router.OnStartActions = append(router.OnStartActions, startAction)
+}
+
+// AddStartAction 添加启动action
+func (router *AutoRouter) AddFinishedAction(finishedAction func(*data.RouterContext)) {
+	if router.OnFinishedActions == nil {
+		router.OnFinishedActions = make([]func(*data.RouterContext), 0)
+	}
+	router.OnFinishedActions = append(router.OnFinishedActions, finishedAction)
 }
 
 // RegisterRoute 注册路由
@@ -68,21 +89,50 @@ func (router *AutoRouter) RegisterRoute(config *AutoRouteConfig) error {
 			}
 		}
 	}
+	if router.Context == nil {
+		router.Context = &data.RouterContext{
+			HTTPMap: make(map[string]*data.HTTPRequest),
+		}
+	}
 
-	// 默认路由
+	// default route
 	var defaultController controller.DefaultController
 	config.Engine.NoRoute(defaultController.MethodNotFound)
 
-	// 基础url
+	// base url
 	route := config.Engine.Group(config.BaseUrl)
 
-	// 注册各个controller的路由
+	// on start
+	router.onStart()
+
+	// register route of each controller
 	err := router.registerEachController(route)
 	if err != nil {
 		return err
 	}
 
+	// on end
+	router.onFinished()
+
 	return nil
+}
+
+// onStart boot action
+func (router *AutoRouter) onStart() {
+	if router.OnStartActions != nil {
+		for i := range router.OnStartActions {
+			router.OnStartActions[i](router.Context)
+		}
+	}
+}
+
+// onStart boot action
+func (router *AutoRouter) onFinished() {
+	if router.OnStartActions != nil {
+		for i := range router.OnFinishedActions {
+			router.OnFinishedActions[i](router.Context)
+		}
+	}
 }
 
 func (router *AutoRouter) registerEachController(engine *gin.RouterGroup) error {
@@ -113,31 +163,19 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 		return errors.New("the arguments should contains at least 3 parameters: url, method, func")
 	}
 
-	tagMap := convertTagArrayToMap(vals)
-	url, ok := tagMap[TagFieldUrl]
-	if !ok {
-		return errors.New("the tag field should contains 'url'")
+	httpRequest, err := convertTag(ctrl, vals)
+	if err != nil {
+		return err
 	}
-	method, ok := tagMap[TagFieldMethod]
-	if !ok {
-		return errors.New("the tag field should contains 'method'")
-	}
-	function, ok := tagMap[TagFieldFunc]
-	if !ok {
-		return errors.New("the tag field should contains 'func'")
-	}
-	needAuth, ok := tagMap[TagFieldAuth]
-	if !ok {
-		needAuth = "true"
-	}
+	// fill http request into context map
+	router.Context.HTTPMap[httpRequest.URL] = httpRequest
 
-	args := []interface{}{url}
+	args := []interface{}{httpRequest.URL}
 
 	// auth check
 	if router.AutoRouteConfig.OAAuth != nil {
-		forceCheck := util.ConvertStringToBoolDefault(needAuth, true)
 		args = append(args, func(ctx *gin.Context) {
-			router.AutoRouteConfig.OAAuth(ctx, forceCheck)
+			router.AutoRouteConfig.OAAuth(ctx, httpRequest.Auth)
 		})
 	}
 
@@ -166,7 +204,7 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 		}()
 
 		var err interface{} = nil
-		args, err := param.ResolveParams(ctrl, function, ctx)
+		args, err := param.ResolveParams(ctrl, httpRequest.Func, ctx)
 		ctx.Set("args", args)
 		if err != nil {
 			router.AutoRouteConfig.ResponseHandler(ctx, &exception.HTTPException{
@@ -177,7 +215,7 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 			return
 		}
 
-		rets := util.ReflectInvokeMethod(ctrl, function, args...)
+		rets := util.ReflectInvokeMethod(ctrl, httpRequest.Func, args...)
 		var data interface{} = nil
 		if len(rets) == 0 {
 			return
@@ -217,7 +255,7 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 		args = append(args, postInters[i])
 	}
 
-	util.ReflectInvokeMethod(engine, method, args...)
+	util.ReflectInvokeMethod(engine, httpRequest.Method, args...)
 	return nil
 }
 
@@ -256,19 +294,51 @@ func (router *AutoRouter) RegisterTagHandlers(field *reflect.StructField, args *
 	}
 }
 
-func convertTagArrayToMap(tags []string) map[string]string {
+func convertTag(ctrl interface{}, tags []string) (*data.HTTPRequest, error) {
 
-	retMap := make(map[string]string)
+	tagMap := make(map[string]string)
 
 	for _, tag := range tags {
 		params := strings.Split(tag, "=")
 		if len(params) < 2 {
 			continue
 		}
-		retMap[params[0]] = params[1]
+		tagMap[params[0]] = params[1]
 	}
 
-	return retMap
+	url, ok := tagMap[TagFieldUrl]
+	if !ok {
+		return nil, errors.New("the tag field should contains 'url'")
+	}
+	method, ok := tagMap[TagFieldMethod]
+	if !ok {
+		return nil, errors.New("the tag field should contains 'method'")
+	}
+	function, ok := tagMap[TagFieldFunc]
+	if !ok {
+		return nil, errors.New("the tag field should contains 'func'")
+	}
+	needAuth, ok := tagMap[TagFieldAuth]
+	if !ok {
+		needAuth = "true"
+	}
+	author, ok := tagMap[TagFieldAuthor]
+	if !ok {
+		author = ""
+	}
+	dataStr, err := param.ResolvePostDataJson(ctrl, method)
+	if err != nil {
+		return nil, err
+	}
+
+	return &data.HTTPRequest{
+		URL:    url,
+		Method: method,
+		Func:   function,
+		Auth:   util.ConvertStringToBoolDefault(needAuth, true),
+		Author: author,
+		Data:   dataStr,
+	}, nil
 }
 
 // GetAutoRouter 获取自动路由注册

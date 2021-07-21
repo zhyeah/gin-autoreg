@@ -1,6 +1,7 @@
 package param
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -27,6 +28,41 @@ type FieldInfo struct {
 	DefaultValue string
 	Type         reflect.Type
 	MustHave     bool
+}
+
+// ResolvePostDataJson resolve json of controler post data
+func ResolvePostDataJson(ctrl interface{}, methodName string) (string, error) {
+	// get method by method name
+	method := reflect.ValueOf(ctrl).MethodByName(methodName)
+
+	// find out the specified param
+	methodType := method.Type()
+	for i := 0; i < methodType.NumIn(); i++ {
+		inType := methodType.In(i)
+		if inType.Elem().Kind() == reflect.Struct {
+			paramInstancePtr := reflect.New(inType.Elem())
+			instanceType := paramInstancePtr.Elem().Type()
+			for j := 0; j < instanceType.NumField(); j++ {
+				from := instanceType.Field(j).Tag.Get("from")
+				if from == FROM_BODY {
+					fVal := paramInstancePtr.Elem().Field(j)
+					fType := instanceType.Field(j).Type
+					switch fType.Kind() {
+					case reflect.Slice, reflect.Map, reflect.Struct:
+						bts, err := json.Marshal(fVal.Addr().Interface())
+						return string(bts), err
+					case reflect.Ptr:
+						if fType.Elem().Kind() == reflect.Struct {
+							val := reflect.New(fType.Elem()).Interface()
+							bts, err := json.Marshal(val)
+							return string(bts), err
+						}
+					}
+				}
+			}
+		}
+	}
+	return "", nil
 }
 
 // ResolveParams 解析controller action需要的参数
