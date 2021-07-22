@@ -163,7 +163,7 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 		return errors.New("the arguments should contains at least 3 parameters: url, method, func")
 	}
 
-	httpRequest, err := convertTag(ctrl, vals)
+	httpRequest, err := router.convertTag(ctrl, vals)
 	if err != nil {
 		return err
 	}
@@ -294,7 +294,7 @@ func (router *AutoRouter) RegisterTagHandlers(field *reflect.StructField, args *
 	}
 }
 
-func convertTag(ctrl interface{}, tags []string) (*data.HTTPRequest, error) {
+func (router *AutoRouter) convertTag(ctrl interface{}, tags []string) (*data.HTTPRequest, error) {
 
 	tagMap := make(map[string]string)
 
@@ -332,7 +332,7 @@ func convertTag(ctrl interface{}, tags []string) (*data.HTTPRequest, error) {
 	}
 
 	return &data.HTTPRequest{
-		URL:    url,
+		URL:    router.AutoRouteConfig.BaseUrl + url,
 		Method: method,
 		Func:   function,
 		Auth:   util.ConvertStringToBoolDefault(needAuth, true),
