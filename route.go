@@ -100,7 +100,7 @@ func (router *AutoRouter) RegisterRoute(config *AutoRouteConfig) error {
 	config.Engine.NoRoute(defaultController.MethodNotFound)
 
 	// base url
-	route := config.Engine.Group(config.BaseUrl)
+	route := config.Engine.Group("")
 
 	// on start
 	router.onStart()
