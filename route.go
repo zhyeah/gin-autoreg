@@ -34,6 +34,7 @@ const (
 	TagFieldFunc   = "func"
 	TagFieldAuth   = "auth"
 	TagFieldAuthor = "author"
+	TagFieldPrefix = "prefix"
 )
 
 // AutoRouteConfig regitster route automatically
@@ -322,6 +323,10 @@ func (router *AutoRouter) convertTag(ctrl interface{}, tags []string) (*data.HTT
 	if !ok {
 		needAuth = "true"
 	}
+	prefix, ok := tagMap[TagFieldPrefix]
+	if !ok {
+		prefix = "true"
+	}
 	author, ok := tagMap[TagFieldAuthor]
 	if !ok {
 		author = ""
@@ -331,8 +336,12 @@ func (router *AutoRouter) convertTag(ctrl interface{}, tags []string) (*data.HTT
 		return nil, err
 	}
 
+	if prefix == "true" {
+		url = router.AutoRouteConfig.BaseUrl + url
+	}
+
 	return &data.HTTPRequest{
-		URL:    router.AutoRouteConfig.BaseUrl + url,
+		URL:    url,
 		Method: method,
 		Func:   function,
 		Auth:   util.ConvertStringToBoolDefault(needAuth, true),
