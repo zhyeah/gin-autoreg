@@ -11,7 +11,8 @@ const (
 
 // HandleResult 处理结果对象
 type HandleResult struct {
-	Code int
+	Code    int
+	Message string
 }
 
 // Handler 自定义标签处理器接口

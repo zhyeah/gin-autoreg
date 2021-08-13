@@ -289,6 +289,10 @@ func (router *AutoRouter) RegisterTagHandlers(field *reflect.StructField, args *
 			tagValue, _ := orderMap[i]
 			result := handlersArray[i].Handle(tagValue, ctx)
 			if result.Code == tag.FailedAndStop {
+				router.AutoRouteConfig.ResponseHandler(ctx, &exception.HTTPException{
+					Code:    http.StatusBadRequest,
+					Message: result.Message,
+				}, nil)
 				ctx.Abort()
 			}
 		})
