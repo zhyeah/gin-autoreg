@@ -44,7 +44,7 @@ func AdaptJSONForDTO(jsonStr string, objPtr interface{}) error {
 }
 
 func convert(fieldObj interface{}, obj interface{}) (interface{}, error) {
-	if obj == nil {
+	if obj == nil || fieldObj == nil {
 		return fieldObj, nil
 	}
 	objType := reflect.TypeOf(obj)
@@ -90,6 +90,7 @@ func convert(fieldObj interface{}, obj interface{}) (interface{}, error) {
 		}
 		return realSlice, nil
 	case reflect.Map:
+
 		// get field json name map
 		fieldJSONMap := getFieldJSONMap(obj)
 
