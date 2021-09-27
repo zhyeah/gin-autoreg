@@ -251,7 +251,7 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 	router.RegisterTagHandlers(field, &args, router.TagManager.GetPostHandlers())
 
 	// Post-inters
-	postInters := intercepterManager.GetPreIntercepters()
+	postInters := intercepterManager.GetPostHandlers()
 	for i := range postInters {
 		args = append(args, postInters[i])
 	}
