@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"reflect"
 	"strings"
+
+	"github.com/zhyeah/gin-autoreg/log"
 )
 
 // AdaptJSONForDTO 将json转换为dto适配的格式, 并反序列化
@@ -101,9 +103,10 @@ func convert(fieldObj interface{}, obj interface{}) (interface{}, error) {
 			if val, ok := fieldJSONMap[fieldJSONName]; ok {
 				convertResult, err := convert(rg.Value().Interface(), val)
 				if err != nil {
-					return fieldObj, err
+					log.Logger.Errorf("field '%s' resolve value '%v' failed", fieldJSONName, rg.Value().Interface())
+				} else {
+					realMap[fieldJSONName] = convertResult
 				}
-				realMap[fieldJSONName] = convertResult
 			} else {
 				realMap[fieldJSONName] = rg.Value().Interface()
 			}
