@@ -194,12 +194,29 @@ func (router *AutoRouter) registerController(engine *gin.RouterGroup, ctrl inter
 	args = append(args, func(ctx *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
-				fmt.Println(string(debug.Stack())) // just for debug
+				stackContent := string(debug.Stack())
+				fmt.Println(stackContent) // just for debug
 				router.AutoRouteConfig.ResponseHandler(ctx, &exception.HTTPException{
 					Code:    http.StatusInternalServerError,
 					Message: fmt.Sprintf("error: %v", err),
 					Err:     nil,
 				}, nil)
+
+				// pass ctx and expInfo into
+				panicInfo := &intercepter.PanicInfo{
+					RecoverContent: err,
+					ExceptionStack: stackContent,
+				}
+				for _, handleFunc := range intercepter.GetGlobalPanicIntercepter().GetPanicHandleFuncs() {
+					defer func() {
+						if err := recover(); err != nil {
+							stackContent := string(debug.Stack())
+							fmt.Println(stackContent) // just for debug
+						}
+					}()
+					handleFunc(ctx, panicInfo)
+				}
+
 				ctx.Abort()
 			}
 		}()
