@@ -16,6 +16,7 @@ func AdaptJSONForDTO(jsonStr string, objPtr interface{}) error {
 	if objType.Kind() == reflect.Ptr {
 		objType = objType.Elem()
 	}
+	log.Logger.Debugf("obj kind: %s", objType.Kind())
 	if objType.Kind() == reflect.Struct || objType.Kind() == reflect.Map {
 		// 首先将jsonStr转换为map
 		adaptObj = make(map[string]interface{})
@@ -130,6 +131,15 @@ func getFieldJSONMap(obj interface{}) map[string]interface{} {
 		}
 	}
 	for j := 0; j < objValue.NumField(); j++ {
+		log.Logger.Debugf("%s %s", objType.Field(j).Name, objType.Field(j).Type.Kind())
+		if objType.Field(j).Type.Kind() == reflect.Struct && objType.Field(j).Anonymous {
+			// recursive collect fields
+			m := getFieldJSONMap(objValue.Field(j).Interface())
+			for k, v := range m {
+				ret[k] = v
+			}
+		}
+
 		jsonTag := objType.Field(j).Tag.Get("json")
 		if strings.Contains(jsonTag, "string") {
 			continue
